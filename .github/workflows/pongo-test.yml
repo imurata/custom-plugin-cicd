@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  # Actions タブから手動実行できる
+  workflow_dispatch:
+
+env:
+  KONG_VERSION: 3.4.3.x
+  KONG_LICENSE_DATA: ${{ secrets.KONG_LICENSE_DATA }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pongo を取得して PATH に追加する
+      - name: Get Luarocks & Pongo
+        run: |
+          sudo apt-get install -y luarocks
+          git clone https://github.com/Kong/kong-pongo.git "$HOME/kong-pongo"
+          echo "$HOME/kong-pongo" >> "$GITHUB_PATH"
+          ln -s "$HOME/kong-pongo/pongo.sh" "$HOME/kong-pongo/pongo"
+
+      - name: Run Pongo
+        run: |
+          pongo lint
+          pongo run
+
+      - name: Make rock
+        run: pongo pack
+
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rock
+          path: "*.rock"
